@@ -9,6 +9,10 @@ edition = "2021"
 name = "helloworld-server"
 path = "src/server.rs"
 
+[[bin]]
+name = "helloworld-client"
+path = "src/client.rs"
+
 [dependencies]
 tonic = "0.10"
 prost = "0.12"
