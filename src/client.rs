@@ -20,6 +20,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let e1 = Endpoint::from_static("http://[::1]:8080");
     let e2 = Endpoint::from_static("http://[::1]:8081");
+    let e3 = Endpoint::from_static("http://[::1]:8080");
 
     let (channel, rx) = Channel::balance_channel(10);
     let mut client = GreeterClient::new(channel);
@@ -33,11 +34,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let change = Change::Insert("1", e1);
         let res = rx.send(change).await;
         println!("{:?}", res);
+
         tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
         println!("Added second endpoint");
         let change = Change::Insert("2", e2);
         let res = rx.send(change).await;
         println!("{:?}", res);
+
         tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
         println!("Removed first endpoint");
         let change = Change::Remove("1");
@@ -52,7 +55,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
         println!("Added third endpoint");
-        let e3 = Endpoint::from_static("http://[::1]:50051");
         let change = Change::Insert("3", e3);
         let res = rx.send(change).await;
         println!("{:?}", res);
@@ -68,7 +70,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     while !done.load(SeqCst) {
         tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
         let request = tonic::Request::new(HelloRequest {
-            message: "hello".into(),
+            name: "hello".into(),
         });
 
         let rx = client.say_hello(request);
