@@ -8,6 +8,7 @@ pub mod hello_world {
     tonic::include_proto!("helloworld");
 }
 
+#[derive(Debug)]
 pub struct MyGreeter {
     addr: SocketAddr,
 }
@@ -30,18 +31,7 @@ impl Greeter for MyGreeter {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    //let addr = "[::1]:8080".parse().unwrap();
-    // let greeter = MyGreeter::default();
-    //
-    // println!("GreeterServer listening on {}", addr);
-    //
-    // Server::builder()
-    //     .add_service(GreeterServer::new(greeter))
-    //     .serve(addr)
-    //     .await?;
-    //
-    // Ok(())
-    let addrs = ["[::1]:8080", "[::1]:8081"];
+    let addrs = ["[::1]:8080", "[::1]:8081", "[::1]:8082"];
 
     let (tx, mut rx) = mpsc::unbounded_channel();
 
