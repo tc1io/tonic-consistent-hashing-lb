@@ -1,5 +1,8 @@
+use tonic::transport::Channel;
 use hello_world::greeter_client::GreeterClient;
 use hello_world::HelloRequest;
+
+// Reference - https://github.com/hyperium/tonic/blob/master/examples/src/load_balance/client.rs
 
 pub mod hello_world {
     tonic::include_proto!("helloworld");
@@ -7,15 +10,23 @@ pub mod hello_world {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let mut client = GreeterClient::connect("http://[::1]:8080").await?;
+    let endpoints = ["http://[::1]:8080", "http://[::1]:8081",  "http://[::1]:8082"]
+        .iter()
+        .map(|a| Channel::from_static(a));
 
-    let request = tonic::Request::new(HelloRequest {
-        name: "Tonic".into(),
-    });
+    let channel = Channel::balance_list(endpoints);
 
-    let response = client.say_hello(request).await?;
+    let mut client = GreeterClient::new(channel);
 
-    println!("RESPONSE={:?}", response);
+    for _ in 0..10usize {
+        let request = tonic::Request::new(HelloRequest {
+            name: "Hello gPRC".into(),
+        });
+
+        let response = client.say_hello(request).await?;
+
+        println!("RESPONSE={:?}", response);
+    }
 
     Ok(())
 }
