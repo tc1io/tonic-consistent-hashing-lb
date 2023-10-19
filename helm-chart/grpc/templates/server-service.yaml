@@ -5,11 +5,13 @@ metadata:
   labels:
     {{- include "server.labels" . | nindent 4 }}
 spec:
-  type: {{ .Values.service.type }}
+  type: {{ .Values.server.service.type }}
   ports:
-    - port: {{ .Values.service.port }}
+    - port: {{ .Values.server.service.port }}
       targetPort: 8082
       protocol: TCP
       name: http
   selector:
     {{- include "server.selectorLabels" . | nindent 4 }}
+
+
