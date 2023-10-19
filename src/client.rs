@@ -10,7 +10,7 @@ pub mod hello_world {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let endpoints = ["http://[::1]:8080", "http://[::1]:8081",  "http://[::1]:8082"]
+    let endpoints = ["http://[::1]:8086"]
         .iter()
         .map(|a| Channel::from_static(a));
 
