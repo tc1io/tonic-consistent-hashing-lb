@@ -5,7 +5,7 @@
 replicaCount: 1
 
 image:
-  repository: helloworld-server-new
+  repository: helloworld-server
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
   tag: latest
@@ -41,7 +41,7 @@ securityContext: {}
 
 service:
   type: ClusterIP
-  port: 8080
+  port: 8086
 
 ingress:
   enabled: false
