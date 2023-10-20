@@ -1,6 +1,7 @@
 use tonic::transport::Channel;
 use hello_world::greeter_client::GreeterClient;
 use hello_world::HelloRequest;
+use sha2::Sha256;
 
 // Reference - https://github.com/hyperium/tonic/blob/master/examples/src/load_balance/client.rs
 
@@ -8,8 +9,23 @@ pub mod hello_world {
     tonic::include_proto!("helloworld");
 }
 
+fn create_hash(val: &[u8]) -> Vec<u8> {
+    let mut hasher = Sha256::new();
+    hasher.update(val);
+    let hash = hasher.finalize();
+return hash
+}
+
+pub struct Ring {
+    key: String,
+    hash: Vec<u8>,
+    server: String,
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+
+
     let endpoints = ["http://[::1]:8080", "http://[::1]:8081",  "http://[::1]:8082"]
         .iter()
         .map(|a| Channel::from_static(a));
