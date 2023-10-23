@@ -1,7 +1,8 @@
 use tonic::transport::Channel;
 use hello_world::greeter_client::GreeterClient;
 use hello_world::HelloRequest;
-use sha2::Sha256;
+use fasthash::murmur3;
+use prost::Message;
 
 // Reference - https://github.com/hyperium/tonic/blob/master/examples/src/load_balance/client.rs
 
@@ -10,10 +11,7 @@ pub mod hello_world {
 }
 
 fn create_hash(val: &[u8]) -> Vec<u8> {
-    let mut hasher = Sha256::new();
-    hasher.update(val);
-    let hash = hasher.finalize();
-return hash
+    murmur3::hash32(val).encode_to_vec()
 }
 
 pub struct Ring {
