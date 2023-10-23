@@ -22,7 +22,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let request = tonic::Request::new(HelloRequest {
             name: "Hello gPRC".into(),
         });
-println!("{:?}",client);
+
         let response = client.say_hello(request).await?;
 
         println!("RESPONSE={:?}", response);
