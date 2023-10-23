@@ -5,6 +5,7 @@ metadata:
   labels:
     {{- include "server.labels" . | nindent 4 }}
 spec:
+  serviceName: ""
   {{- if not .Values.server.autoscaling.enabled }}
   replicas: {{ .Values.server.replicaCount }}
   {{- end }}
