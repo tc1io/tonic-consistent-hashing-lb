@@ -10,7 +10,7 @@ pub mod hello_world {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let endpoints = ["http://0.0.0.0:8082"]
+    let endpoints = ["http://0.0.0.0:8087", "http://0.0.0.0:8088", "http://0.0.0.0:8089"]
         .iter()
         .map(|a| Channel::from_static(a));
 
@@ -22,7 +22,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let request = tonic::Request::new(HelloRequest {
             name: "Hello gPRC".into(),
         });
-
+println!("{:?}",client);
         let response = client.say_hello(request).await?;
 
         println!("RESPONSE={:?}", response);

@@ -1,6 +1,6 @@
 # values for server.
 server:
-  replicaCount: 1
+  replicaCount: 3
 
   image:
     repository: helloworld-server
@@ -34,7 +34,7 @@ client:
   fullnameOverride: ""
   service:
     type: ClusterIP
-    port: 8082
+    port: 8086
   autoscaling:
     enabled: false
     minReplicas: 1
