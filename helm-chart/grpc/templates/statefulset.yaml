@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "server.fullname" . }}
+  labels:
+    {{- include "server.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.server.autoscaling.enabled }}
+  replicas: {{ .Values.server.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "server.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "server.labels" . | nindent 8 }}
+    spec:
+      containers:
+        - name: server
+          image: "{{ .Values.server.image.repository }}:{{ .Values.server.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.server.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.server.service.port }}
+              protocol: TCP
