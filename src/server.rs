@@ -31,11 +31,9 @@ impl Greeter for MyGreeter {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let addrs = ["[::1]:8080", "[::1]:8081", "[::1]:8082"];
+    let addr = "0.0.0.0:8086";
 
     let (tx, mut rx) = mpsc::unbounded_channel();
-
-    for addr in &addrs {
         let addr = addr.parse()?;
         let tx = tx.clone();
 
@@ -51,7 +49,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             tx.send(()).unwrap();
         });
-    }
 
     rx.recv().await;
 

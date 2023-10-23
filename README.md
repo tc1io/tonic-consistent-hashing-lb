@@ -11,3 +11,18 @@ Test Client and Server
 
 cargo run --bin helloworld-server
 cargo run --bin helloworld-client
+
+----------------------------------------------------------------------
+Build Image
+
+docker build -t helloworld-server:latest -f Dockerfile .
+
+---------------------------------------------------------------------
+Helm Install
+
+helm install <chart-name> helm-chart/grpc
+
+----------------------------------------------------------------------
+Port forward command
+
+kubectl --namespace default port-forward <pod-name> <forwarding-port>:8086

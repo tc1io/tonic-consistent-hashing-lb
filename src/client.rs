@@ -24,7 +24,11 @@ pub struct Ring {
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 
-    let endpoints = ["http://[::1]:8080", "http://[::1]:8081",  "http://[::1]:8082"]
+
+    //let endpoints = ["http://[::1]:8080", "http://[::1]:8081",  "http://[::1]:8082"]
+
+    let endpoints = ["http://0.0.0.0:8087", "http://0.0.0.0:8088", "http://0.0.0.0:8089"]
+
         .iter()
         .map(|a| Channel::from_static(a));
 
