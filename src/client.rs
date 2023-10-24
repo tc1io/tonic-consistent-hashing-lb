@@ -3,7 +3,7 @@ use hello_world::greeter_client::GreeterClient;
 use hello_world::HelloRequest;
 use fasthash::murmur3;
 use prost::Message;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap};
 use k8s_openapi::api::core::v1::Pod;
 use kube::{Client, ResourceExt};
 use kube::api::{Api, ListParams};
@@ -36,27 +36,26 @@ impl Node {
 
 pub struct ConsistentHash {
     ring: BTreeMap<Vec<u8>, Node>,
-    replicas: HashMap<String, usize>,
 }
 
 impl ConsistentHash {
-
     pub fn new() -> ConsistentHash {
         ConsistentHash {
             ring: BTreeMap::new(),
-            replicas: HashMap::new(),
         }
+    }
+    pub fn add(&mut self, node: &Node) {
+        self.remove(node);
+        let node_id = format!("{}:{}", node.host, node.port);
+        let key = create_hash(node_id.as_bytes());
+        self.ring.insert(key, node.clone());
     }
 
-    pub fn add(&mut self, node: &Node, rep_count: usize) {
-        let node_name = format!("{}:{}", node.host, node.port);
-        self.replicas.insert(node_name.clone(), rep_count);
-        for replica in 0..rep_count {
-            let node_id = format!("{}:{}", node_name, replica);
-            let key = create_hash(node_id.as_bytes());
-            self.ring.insert(key, node.clone());
-        }
-    }
+    // pub fn list_ring(&self) {
+    //     for (key, value) in self.ring.iter() {
+    //         println!("{:?}: {:?}", key, value);
+    //     }
+    // }
 
     pub fn get_next_node(&self, k: &str) -> Option<&Node> {
         let key = k.as_bytes();
@@ -67,6 +66,7 @@ impl ConsistentHash {
         let hashed_key = create_hash(key);
 
         let entry = self.ring.range(hashed_key..).next();
+        //dbg!("whats next {:?}", entry);
         if let Some((_k, v)) = entry {
             return Some(v);
         }
@@ -75,6 +75,12 @@ impl ConsistentHash {
         Some(v)
     }
 
+    pub fn remove(&mut self, node: &Node) {
+        let node_id = format!("{}:{}", node.host, node.port);
+        let key = create_hash(node_id.as_bytes());
+        self.ring.remove(&key);
+
+    }
     pub fn len(&self) -> usize {
         self.ring.len()
     }
@@ -83,37 +89,52 @@ impl ConsistentHash {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
-   let mut ch = ConsistentHash::new();
+   // let mut ch = ConsistentHash::new();
+   //
+   //  let mut nodes = vec![];
+   //  nodes.push(Node::new("http://0.0.0.0", 8087));
+   //  nodes.push(Node::new("http://0.0.0.0", 8088));
+   //  nodes.push(Node::new("http://0.0.0.0", 8089));
+   //
+   //  for node in nodes {
+   //      ch.add(&node);
+   //  }
 
-    let mut nodes = vec![];
-    // TODO: Get pods from kubeapi (Check for appropriate crate)
-    nodes.push(Node::new("http://0.0.0.0", 8087));
-    nodes.push(Node::new("http://0.0.0.0", 8088));
-    nodes.push(Node::new("http://0.0.0.0", 8089));
-
-    for node in nodes {
-        ch.add(&node, 3);
-    }
+    // println!("before remove count - {}", ch.len());
+    //
+    // ch.remove(&Node::new("http://0.0.0.0", 8088));
+    //
+    // println!("after remove count- {}", ch.len());
 
     // Test the get logic
-    for j in 0..50usize {
-        let data = format!("hello-{}", j);
-        let next = ch.get_next_node(data.as_str()).unwrap();
-        println!("next {:?}", next);
-    }
+    // for j in 0..50usize {
+    //     let data = format!("hello-{}", j);
+    //     let next = ch.get_next_node(data.as_str()).unwrap();
+    //     println!("next {:?}", next);
+    // }
+    //
+    // ch.list_ring();
 
     // TODO: Refactor k8s impl below
-    // let k8s_client = Client::try_default().await?;
-    // let pods: Api<Pod> = Api::default_namespaced(k8s_client);
-    //
-    // let lp = ListParams::default().labels("helm.sh/chart=grpc-0.1.0-server");
-    // for p in pods.list(&lp).await? {
-    //     println!("Pod name: {}", p.name_any());
-    // }
+    let k8s_client = Client::try_default().await?;
+    let pods: Api<Pod> = Api::default_namespaced(k8s_client);
+
+    let lp = ListParams::default().labels("helm.sh/chart=grpc-0.1.0-server");
+    for p in pods.list(&lp).await? {
+        println!("Pod name: {}", p.name_any());
+        println!("Pod ip: {:?}", p.status.unwrap().pod_ip.unwrap());
+        let cont = p.spec.unwrap().containers;
+        for c in cont {
+            for p in c.ports.unwrap() {
+                println!("Ports {:?} - {:?}", p.name.unwrap(), p.container_port)
+            }
+        }
+
+    }
     //let endpoints = ["http://[::1]:8080", "http://[::1]:8081",  "http://[::1]:8082"]
 
     let endpoints = ["http://0.0.0.0:8087", "http://0.0.0.0:8088", "http://0.0.0.0:8089"]
-
+    //let endpoints = ["http://10.244.0.205:8086", "http://10.244.0.206:8086", "http://10.244.0.207:8086"]
         .iter()
         .map(|a| Channel::from_static(a));
 
