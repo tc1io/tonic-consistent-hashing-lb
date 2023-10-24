@@ -22,6 +22,6 @@ spec:
           image: "{{ .Values.server.image.repository }}:{{ .Values.server.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.server.image.pullPolicy }}
           ports:
-            - name: http
+            - name: grpc-server
               containerPort: {{ .Values.server.service.port }}
               protocol: TCP
