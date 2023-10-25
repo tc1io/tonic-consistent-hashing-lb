@@ -1,9 +1,8 @@
-# values for server.
 server:
   replicaCount: 3
 
   image:
-    repository: helloworld-server
+    repository: localhost:32000/tonic-consistent-hashing-lb/helloworld-server
     pullPolicy: IfNotPresent
     tag: latest
 

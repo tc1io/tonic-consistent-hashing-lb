@@ -1,6 +1,13 @@
-#!/bin/sh
+#!/usr/bin/env bash
 
-docker build -t helloworld-server:latest -f Dockerfile .
-docker build -t helloworld-client:latest -f Dockerfile .
 
-helm install my-chart-grpc
+eval $(minikube docker-env)
+
+docker build -t localhost:32000/tonic-consistent-hashing-lb/helloworld-server:latest -f Dockerfile .
+
+
+
+helm install my-chart-grpc helm-chart/grpc
+
+
+#docker build -t helloworld-server -f Dockerfile .

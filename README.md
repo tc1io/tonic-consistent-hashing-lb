@@ -17,6 +17,11 @@ Build Image
 
 docker build -t helloworld-server:latest -f Dockerfile .
 
+
+For Minikube
+eval $(minikube docker-env)
+docker build -t localhost:32000/tonic-consistent-hashing-lb/helloworld-server:latest -f Dockerfile .
+
 ---------------------------------------------------------------------
 Helm Install
 
