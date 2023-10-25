@@ -12,6 +12,9 @@ pub mod hello_world {
     tonic::include_proto!("helloworld");
 }
 
+const POD_LABEL: &str = "helm.sh/chart=grpc-server";
+const STATEFULSET_NAME: &str = "tonic-consistent-hashing";
+
 // Tonic LB Reference - https://github.com/hyperium/tonic/blob/master/examples/src/load_balance/client.rs
 // Consistent hash reference - https://github.com/zonyitoo/conhash-rs/blob/master/src/conhash.rs
 
@@ -19,12 +22,9 @@ pub mod hello_world {
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut ch = ConsistentHash::new();
 
-    let mut nodes = vec![];
-    nodes.push(Node::new("http://0.0.0.0", 8087));
-    nodes.push(Node::new("http://0.0.0.0", 8088));
-    nodes.push(Node::new("http://0.0.0.0", 8089));
+   let nodes: Vec<Node> = k8s::get_nodes(POD_LABEL, STATEFULSET_NAME).await?;
 
-    for node in nodes {
+    for node in nodes.iter() {
         ch.add(&node);
     }
 
