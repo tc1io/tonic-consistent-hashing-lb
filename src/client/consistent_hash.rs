@@ -1,24 +1,10 @@
 use std::collections::{BTreeMap};
 use fasthash::murmur3;
 use prost::Message;
+use crate::node::Node;
 
 fn create_hash(val: &[u8]) -> Vec<u8> {
     murmur3::hash32(val).encode_to_vec()
-}
-
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub struct Node {
-    host: String,
-    port: u16,
-}
-
-impl Node {
-    pub(crate) fn new(host: &str, port: u16) -> Node {
-        Node {
-            host: host.to_string(),
-            port,
-        }
-    }
 }
 
 pub struct ConsistentHash {

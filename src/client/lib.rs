@@ -1,12 +1,12 @@
+use k8s_openapi::api::apps::v1::StatefulSet;
 use tonic::transport::Channel;
 use hello_world::greeter_client::GreeterClient;
 use hello_world::HelloRequest;
-use consistent_hash::{ConsistentHash, Node};
-use k8s_openapi::api::core::v1::Pod;
-use kube::{Client, ResourceExt};
-use kube::api::{Api, ListParams};
+use consistent_hash::ConsistentHash;
+use node::Node;
 mod consistent_hash;
 mod k8s;
+mod node;
 
 pub mod hello_world {
     tonic::include_proto!("helloworld");
@@ -44,20 +44,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     //ch.list_ring();
 
     // TODO: Refactor k8s impl below
-    let k8s_client = Client::try_default().await?;
-    let pods: Api<Pod> = Api::default_namespaced(k8s_client);
 
-    let lp = ListParams::default().labels("helm.sh/chart=grpc-0.1.0-server");
-    for p in pods.list(&lp).await? {
-        println!("Pod name: {}", p.name_any());
-        println!("Pod ip: {:?}", p.status.unwrap().pod_ip.unwrap());
-        let cont = p.spec.unwrap().containers;
-        for c in cont {
-            for p in c.ports.unwrap() {
-                println!("Ports {:?} - {:?}", p.name.unwrap(), p.container_port)
-            }
-        }
-    }
     //let endpoints = ["http://[::1]:8080", "http://[::1]:8081",  "http://[::1]:8082"]
 
     let endpoints = ["http://0.0.0.0:8087", "http://0.0.0.0:8088", "http://0.0.0.0:8089"]
