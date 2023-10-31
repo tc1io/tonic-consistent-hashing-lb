@@ -2,6 +2,8 @@ use std::collections::{BTreeMap};
 use fasthash::murmur3;
 use prost::Message;
 use crate::node::Node;
+use crate::k8s;
+use anyhow::{Result};
 
 fn create_hash(val: &[u8]) -> Vec<u8> {
     murmur3::hash32(val).encode_to_vec()
@@ -54,7 +56,11 @@ impl ConsistentHash {
         self.ring.remove(&key);
 
     }
-    pub fn len(&self) -> usize {
-        self.ring.len()
+    // pub fn len(&self) -> usize {
+    //     self.ring.len()
+    // }
+
+    pub async fn get_pods(&self, pod_label: &str, statefulset_name: &str, port_name: &str) -> Result<Vec<Node>> {
+        return k8s::get_nodes(pod_label, statefulset_name, port_name).await
     }
 }

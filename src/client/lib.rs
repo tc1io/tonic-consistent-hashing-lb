@@ -22,7 +22,7 @@ const STATEFULSET_NAME: &str = "tonic-consistent-hashing";
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut ch = ConsistentHash::new();
 
-   let nodes: Vec<Node> = k8s::get_nodes(POD_LABEL, STATEFULSET_NAME, PORT_NAME).await?;
+   let nodes: Vec<Node> = ch.get_pods(POD_LABEL, STATEFULSET_NAME, PORT_NAME).await?;
 
     // let mut nodes = vec![];
     // nodes.push(Node::new("http://test1", 8087));
