@@ -197,7 +197,10 @@ impl Channel {
             D: Discover<Service = Connection> + Unpin + Send + 'static,
             D::Error: Into<Error>,
             D::Key: Hash + Send + Clone,
-            E: Executor<crate::BoxFuture<'static, ()>> + Send + Sync + 'static,
+            E: Executor<crate::BoxFuture<'static, ()>> + Send + Sync + 'static,  <D as tower::discover::Discover>::Error: std::error::Error,  <D as tower::discover::Discover>::Error: Send,  <D as tower::discover::Discover>::Error: Sync
+
+
+
     {
         let svc = Balance::new(discover);
 

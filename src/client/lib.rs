@@ -18,6 +18,7 @@ pub mod add_origin;
 pub mod dynamicservicestream;
 
 type BoxFuture<'a, T> = std::pin::Pin<Box<dyn std::future::Future<Output = T> + Send + 'a>>;
+type Error = Box<dyn std::error::Error + Send + Sync>;
 
 pub mod hello_world {
     tonic::include_proto!("helloworld");

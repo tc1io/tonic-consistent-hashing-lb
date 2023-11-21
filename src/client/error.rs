@@ -31,7 +31,7 @@ impl Error {
         self
     }
 
-    pub(crate) fn from_source(source: impl Into<Error>) -> Self {
+    pub(crate) fn from_source(source: impl Into<crate::Error>) -> Self {
         Error::new(Kind::Transport).with(source)
     }
 
