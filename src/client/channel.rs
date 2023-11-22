@@ -47,7 +47,7 @@ use tower::{
 //     /// Place the future into the executor to be run.
 //     fn execute(&self, fut: Fut);
 // }
-type Svc = Either<Connection, BoxService<Request<BoxBody>, Response<hyper::Body>, Error>>;
+type Svc = Either<Connection, BoxService<Request<BoxBody>, Response<hyper::Body>, crate::Error>>;
 
 const DEFAULT_BUFFER_SIZE: usize = 1024;
 

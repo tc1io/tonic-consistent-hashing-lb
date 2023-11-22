@@ -22,18 +22,19 @@ use tower::{
 use tower_service::Service;
 use crate::BoxFuture;
 
+
 pub(crate) type Request = http::Request<BoxBody>;
 pub(crate) type Response = http::Response<hyper::Body>;
 
 pub(crate) struct Connection {
-    inner: BoxService<Request, Response, Error>,
+    inner: BoxService<Request, Response, crate::Error>,
 }
 
 impl Connection {
     fn new<C>(connector: C, endpoint: Endpoint, is_lazy: bool) -> Self
         where
             C: Service<Uri> + Send + 'static,
-            C::Error: Into<Error> + Send,
+            C::Error: Into<crate::Error> + Send,
             C::Future: Unpin + Send,
             C::Response: AsyncRead + AsyncWrite + HyperConnection + Unpin + Send + 'static,
     {
@@ -79,10 +80,10 @@ impl Connection {
         }
     }
 
-    pub(crate) async fn connect<C>(connector: C, endpoint: Endpoint) -> Result<Self, Error>
+    pub(crate) async fn connect<C>(connector: C, endpoint: Endpoint) -> Result<Self, crate::Error>
         where
             C: Service<Uri> + Send + 'static,
-            C::Error: Into<Error> + Send,
+            C::Error: Into<crate::Error> + Send,
             C::Future: Unpin + Send,
             C::Response: AsyncRead + AsyncWrite + HyperConnection + Unpin + Send + 'static,
     {
@@ -92,7 +93,7 @@ impl Connection {
     pub(crate) fn lazy<C>(connector: C, endpoint: Endpoint) -> Self
         where
             C: Service<Uri> + Send + 'static,
-            C::Error: Into<Error> + Send,
+            C::Error: Into<crate::Error> + Send,
             C::Future: Unpin + Send,
             C::Response: AsyncRead + AsyncWrite + HyperConnection + Unpin + Send + 'static,
     {
@@ -102,7 +103,7 @@ impl Connection {
 
 impl Service<Request> for Connection {
     type Response = Response;
-    type Error = Error;
+    type Error = crate::Error;
     type Future = BoxFuture<'static, Result<Self::Response, Self::Error>>;
 
     fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {

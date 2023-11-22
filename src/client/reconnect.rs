@@ -11,14 +11,14 @@ use tower_service::Service;
 use tracing::trace;
 
 pub(crate) struct Reconnect<M, Target>
-where
-    M: Service<Target>,
-    M::Error: Into<Error>,
+    where
+        M: Service<Target>,
+        M::Error: Into<Error>,
 {
     mk_service: M,
     state: State<M::Future, M::Response>,
     target: Target,
-    error: Option<Error>,
+    error: Option<crate::Error>,
     has_been_connected: bool,
     is_lazy: bool,
 }
@@ -31,9 +31,9 @@ enum State<F, S> {
 }
 
 impl<M, Target> Reconnect<M, Target>
-where
-    M: Service<Target>,
-    M::Error: Into<Error>,
+    where
+        M: Service<Target>,
+        M::Error: Into<Error>,
 {
     pub(crate) fn new(mk_service: M, target: Target, is_lazy: bool) -> Self {
         Reconnect {
@@ -48,13 +48,13 @@ where
 }
 
 impl<M, Target, S, Request> Service<Request> for Reconnect<M, Target>
-where
-    M: Service<Target, Response = S>,
-    S: Service<Request>,
-    M::Future: Unpin,
-    Error: From<M::Error> + From<S::Error>,
-    Target: Clone,
-    <M as tower_service::Service<Target>>::Error: Into<Error>,
+    where
+        M: Service<Target, Response = S>,
+        S: Service<Request>,
+        M::Future: Unpin,
+        Error: From<M::Error> + From<S::Error>,
+        Target: Clone,
+        <M as tower_service::Service<Target>>::Error: Into<crate::Error>,
 {
     type Response = S::Response;
     type Error = Error;
@@ -156,12 +156,12 @@ where
 }
 
 impl<M, Target> fmt::Debug for Reconnect<M, Target>
-where
-    M: Service<Target> + fmt::Debug,
-    M::Future: fmt::Debug,
-    M::Response: fmt::Debug,
-    Target: fmt::Debug,
-    <M as tower_service::Service<Target>>::Error: Into<Error>,
+    where
+        M: Service<Target> + fmt::Debug,
+        M::Future: fmt::Debug,
+        M::Response: fmt::Debug,
+        Target: fmt::Debug,
+        <M as tower_service::Service<Target>>::Error: Into<Error>,
 {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt.debug_struct("Reconnect")
@@ -184,7 +184,7 @@ pub(crate) struct ResponseFuture<F> {
 #[derive(Debug)]
 enum Inner<F> {
     Future(#[pin] F),
-    Error(Option<Error>),
+    Error(Option<crate::Error>),
 }
 
 impl<F> ResponseFuture<F> {
@@ -194,7 +194,7 @@ impl<F> ResponseFuture<F> {
         }
     }
 
-    pub(crate) fn error(error: Error) -> Self {
+    pub(crate) fn error(error: crate::Error) -> Self {
         ResponseFuture {
             inner: Inner::Error(Some(error)),
         }
@@ -202,9 +202,9 @@ impl<F> ResponseFuture<F> {
 }
 
 impl<F, T, E> Future for ResponseFuture<F>
-where
-    F: Future<Output = Result<T, E>>,
-    E: Into<Error>,
+    where
+        F: Future<Output = Result<T, E>>,
+        E: Into<Error>,
 {
     type Output = Result<T, Error>;
 
