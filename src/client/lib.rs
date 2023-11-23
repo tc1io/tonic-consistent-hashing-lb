@@ -16,6 +16,7 @@ pub mod reconnect;
 pub mod user_agent;
 pub mod add_origin;
 pub mod dynamicservicestream;
+mod tonic_service;
 
 type BoxFuture<'a, T> = std::pin::Pin<Box<dyn std::future::Future<Output = T> + Send + 'a>>;
 type Error = Box<dyn std::error::Error + Send + Sync>;
