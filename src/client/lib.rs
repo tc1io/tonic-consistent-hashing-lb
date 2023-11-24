@@ -3,6 +3,9 @@ use hello_world::greeter_client::GreeterClient;
 use hello_world::HelloRequest;
 use consistent_hash::ConsistentHash;
 use node::Node;
+use tonic::transport::channel as tonic_channel;
+use crate::ch::DebugService;
+
 pub mod consistent_hash;
 pub mod k8s;
 pub mod node;
@@ -17,6 +20,7 @@ pub mod user_agent;
 pub mod add_origin;
 pub mod dynamicservicestream;
 mod tonic_service;
+mod ch;
 
 type BoxFuture<'a, T> = std::pin::Pin<Box<dyn std::future::Future<Output = T> + Send + 'a>>;
 type Error = Box<dyn std::error::Error + Send + Sync>;
@@ -60,11 +64,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let endpoints = ["http://0.0.0.0:8087", "http://0.0.0.0:8088", "http://0.0.0.0:8089"]
         //let endpoints = ["http://10.244.0.205:8086", "http://10.244.0.206:8086", "http://10.244.0.207:8086"]
         .iter()
-        .map(|a| channel::Channel::from_static(a));
+        .map(|a| tonic_channel::Channel::from_static(a));
 
-    let channel = channel::Channel::balance_list(endpoints);
+    //let channel = channel::Channel::balance_list(endpoints);
+    let channel = tonic_channel::Channel::balance_list(endpoints);
 
-    let mut client = GreeterClient::new(channel);
+    let xxx = DebugService{};
+
+    //let mut client = GreeterClient::new(channel);
+    let mut client = GreeterClient::new(xxx);
 
     for _ in 0..10usize {
         let request = tonic::Request::new(HelloRequest {
