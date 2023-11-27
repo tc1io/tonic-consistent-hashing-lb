@@ -1,26 +1,30 @@
+use std::convert::Infallible;
+use std::future::{Ready, ready};
+use std::task::{Context, Poll};
 //use tonic::transport::Channel;
 use hello_world::greeter_client::GreeterClient;
 use hello_world::HelloRequest;
 use consistent_hash::ConsistentHash;
 use node::Node;
 use tonic::transport::channel as tonic_channel;
-use crate::ch::DebugService;
+use tower_service::Service;
+//use crate::ch::DebugService;
 
 pub mod consistent_hash;
 pub mod k8s;
 pub mod node;
-pub mod channel;
-pub mod endpoint;
-pub mod error;
-pub mod executor;
-pub mod connection;
-pub mod grpc_timeout;
-pub mod reconnect;
-pub mod user_agent;
-pub mod add_origin;
-pub mod dynamicservicestream;
-mod tonic_service;
-mod ch;
+// pub mod channel;
+// pub mod endpoint;
+// pub mod error;
+// pub mod executor;
+// pub mod connection;
+// pub mod grpc_timeout;
+// pub mod reconnect;
+// pub mod user_agent;
+// pub mod add_origin;
+// pub mod dynamicservicestream;
+// mod tonic_service;
+// mod ch;
 
 type BoxFuture<'a, T> = std::pin::Pin<Box<dyn std::future::Future<Output = T> + Send + 'a>>;
 type Error = Box<dyn std::error::Error + Send + Sync>;
@@ -71,8 +75,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let xxx = DebugService{};
 
-    //let mut client = GreeterClient::new(channel);
-    let mut client = GreeterClient::new(xxx);
+    //let mut client = GreeterClient::new(xxx);
+    let mut client = GreeterClient::new(channel);
 
     for _ in 0..10usize {
         let request = tonic::Request::new(HelloRequest {
@@ -85,4 +89,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     Ok(())
+}
+
+pub struct DebugService;
+
+impl Service<()> for DebugService {
+    type Response = ();
+    type Error = Infallible;
+    type Future = Ready<Result<Self::Response, Self::Error>>;
+
+    fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        Ok(()).into()
+    }
+
+    fn call(&mut self, _req: ()) -> Self::Future {
+        ready(Ok(()))
+    }
 }
