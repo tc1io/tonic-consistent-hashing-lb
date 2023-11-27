@@ -299,9 +299,8 @@ async fn main() {
         let request = "Hello, Tower Service!";
         let resp = delay_service.call(request);
 
-        // Wait for the response
         resp.await.expect("TODO: panic message").await;
-    println!("response received from tower - {}, after delay", j);
+        println!("response received from tower - {}, after delay", j);
 
     }
 }
