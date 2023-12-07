@@ -13,18 +13,24 @@ pub struct DemoChannel {
 
 impl DemoChannel {
     pub async fn new(uri: &'static str) -> Self {
-        let e = tonic::transport::Endpoint::new(uri).unwrap();
-        let chan = e.connect().await.unwrap();
+        // TODO Setup K8S based upstream discovery and
+        // TODO consistent hashing ring
+        let endpoint = tonic::transport::Endpoint::new(uri).unwrap();
+        let chan = endpoint.connect().await.unwrap();
         Self {
             chan
         }
     }
 
     fn select_a_channel(&self, hash: u64) -> Channel {
-        todo!()
+        // TODO Select channel from Bbtree ring based on hash value.
+        self.chan.clone()
     }
 
-    fn hash(req: http::Request<BoxBody>) -> u64 {
+    fn hash(req: &http::Request<BoxBody>) -> u64 {
+        // TODO Calculate has value based on request meta data
+        // TODO Issue: we only see an HTTP request here it seems
+        // TODO and are missing meta data.
         0
     }
 }
@@ -40,11 +46,9 @@ impl Service<http::Request<BoxBody>> for DemoChannel {
     }
 
     fn call(&mut self, request: http::Request<BoxBody>) -> Self::Future {
-        GrpcService::call(&mut self.chan, request)
-
-        // let hash = Self::hash(request);
-        // let channel = self.select_a_channel(hash);
-        // GrpcService::call(&mut channel, request)
+        let hash = Self::hash(&request);
+        let mut channel = self.select_a_channel(hash);
+        GrpcService::call(&mut channel, request)
     }
 }
 
