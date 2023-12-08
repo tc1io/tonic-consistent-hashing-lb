@@ -41,14 +41,22 @@ impl Service<http::Request<BoxBody>> for DemoChannel {
     type Future = ResponseFuture;
 
 
-    fn poll_ready(&mut self, _: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        Poll::Ready(Ok(()))
+    fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        dbg!("aaa");
+        let hash = 0; //Self::hs(&request);
+        let mut channel = self.select_a_channel(hash);
+        let x = Service::poll_ready(&mut channel, cx); //.map_err(super::Error::from_source)
+        dbg!("bbb");
+        x
     }
 
     fn call(&mut self, request: http::Request<BoxBody>) -> Self::Future {
         let hash = Self::hash(&request);
         let mut channel = self.select_a_channel(hash);
-        GrpcService::call(&mut channel, request)
+        dbg!("ccc");
+        let x = GrpcService::call(&mut channel, request);
+        dbg!("ddd");
+        x
     }
 }
 
