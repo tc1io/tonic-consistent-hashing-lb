@@ -1,6 +1,6 @@
 use tonic::{Request, Status};
 
-use tonic_consistent_hashing_lb::JanChannel;
+use tonic_consistent_hashing_lb::NoopChannel;
 
 use crate::pb::greeter_client::GreeterClient;
 use crate::pb::HelloRequest;
@@ -15,7 +15,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     start_server();
 
     //let channel = SimpleChannel;
-    let channel = JanChannel::new("http://[::1]:50053").await;
+    let channel = NoopChannel::new("http://[::1]:50053").await;
 
     let mut client = GreeterClient::with_interceptor(channel, intercept);
     let request = tonic::Request::new(HelloRequest {

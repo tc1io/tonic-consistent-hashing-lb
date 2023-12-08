@@ -1,4 +1,4 @@
-use tonic_consistent_hashing_lb::DemoChannel;
+use tonic_consistent_hashing_lb::StaticSetConsistentHashingLBChannel;
 
 use crate::pb::greeter_client::GreeterClient;
 use crate::pb::HelloRequest;
@@ -12,8 +12,7 @@ pub mod pb {
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     start_server();
 
-    //let channel = SimpleChannel;
-    let channel = DemoChannel::new("http://[::1]:50053").await;
+    let channel = StaticSetConsistentHashingLBChannel::new(&["http://[::1]:50053"]).await;
 
     let mut client = GreeterClient::new(channel);
     let request = tonic::Request::new(HelloRequest {

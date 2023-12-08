@@ -1,10 +1,8 @@
-pub use demo::DemoChannel;
-pub use jan::JanChannel;
-pub use silly::SillyChannel;
+pub use noop::NoopChannel;
+pub use seticset::StaticSetConsistentHashingLBChannel;
 pub use simple::SimpleChannel;
 
 mod simple;
-mod silly;
-mod demo;
-mod jan;
+mod noop;
+mod seticset;
 
