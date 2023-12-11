@@ -1,6 +1,7 @@
 use crate::pb::{HelloReply, HelloRequest};
 use crate::pb::greeter_client::GreeterClient;
 use crate::server::start_server;
+use tonic::transport::Endpoint;
 
 pub mod pb {
     tonic::include_proto!("helloworld");
@@ -14,6 +15,7 @@ impl StaticSetConsitentHashingLBClient<tonic::transport::Channel> {
     pub async fn new(uris: &'static [&'static str]) -> Self {
         let mut s = Self { clients: Vec::new() };
         for u in uris {
+            let u = Endpoint::from_static(u);
             let client = GreeterClient::connect(u).await.unwrap();
             s.clients.push(client)
         }
@@ -27,7 +29,7 @@ impl StaticSetConsitentHashingLBClient<tonic::transport::Channel> {
         let hash = 0; // calculate hash from HelloRequest
         let idx = hash as usize % self.clients.len();
         let c: &GreeterClient<_> = self.clients.get(idx).unwrap();
-        c.clone().say_hello(request)
+        c.clone().say_hello(request).await
     }
 }
 
