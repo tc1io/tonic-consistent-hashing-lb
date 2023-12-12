@@ -3,6 +3,7 @@ use crate::pb::greeter_client::GreeterClient;
 use crate::server::start_server;
 use tonic::transport::Endpoint;
 use std::collections::BTreeMap;
+use std::fmt::format;
 use fasthash::murmur3;
 use prost::Message;
 
@@ -10,6 +11,7 @@ pub mod pb {
     tonic::include_proto!("helloworld");
 }
 
+#[derive(Debug)]
 struct StaticSetConsitentHashingLBClient<T> {
     clients: BTreeMap<Vec<u8>, Vec<GreeterClient<T>>>,
 }
@@ -22,15 +24,19 @@ fn create_hash(val: &[u8]) -> Vec<u8> {
 impl StaticSetConsitentHashingLBClient<tonic::transport::Channel> {
     pub async fn new(uris: &'static [&'static str]) -> Self {
         let mut s = Self { clients: BTreeMap::new() };
-        for (i,u) in uris.iter().enumerate() {
-            let k = create_hash("TODO_Key".as_bytes());
-            println!("hash in new{:?}", k);
-            let u = Endpoint::from_static(u);
+        for u in uris.chunks(2) {
+            let key = format!("key_{:?}", u);
+            println!("{}", key);
+            let k = create_hash(key.as_bytes());
             let mut c = Vec::new();
-            let client = GreeterClient::connect(u).await.unwrap();
-            c.push(client);
+            for x in u {
+                let e = Endpoint::from_static(x);
+                let client = GreeterClient::connect(e).await.unwrap();
+                c.push(client);
+            }
             s.clients.insert(k, c);
         }
+        println!("clients {:?}", s.clients);
         s
     }
 
@@ -39,7 +45,9 @@ impl StaticSetConsitentHashingLBClient<tonic::transport::Channel> {
         &mut self,
         request: impl tonic::IntoRequest<HelloRequest>,
     ) -> Result<tonic::Response<HelloReply>, tonic::Status> {
-        let hash =  create_hash("TODO_Key".as_bytes());;// calculate hash from HelloRequest
+        let aa = r#"["http://[::1]:8080", "http://[::1]:8081"]"#;
+        let key = format!("key_{}",aa );
+        let hash =  create_hash(key.as_bytes());;// calculate hash from HelloRequest
         println!("hash {:?}", hash);
         //let idx = hash as usize % self.clients.len();
         let c: &Vec<GreeterClient<_>> = self.clients.get(&*hash).unwrap();
