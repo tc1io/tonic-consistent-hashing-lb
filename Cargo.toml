@@ -20,7 +20,7 @@ tokio = { version = "1.0", features = ["macros", "rt-multi-thread"] }
 hostname = "0.3.1"
 fasthash = "0.4.0"
 anyhow = "1.0.75"
-kube = { version = "0.86.0", features = ["runtime", "derive"] }
+kube = { version = "0.87.1", features = ["runtime", "derive"] }
 k8s-openapi = { version = "0.20.0", features = ["latest"] }
 bytes = "1.0"
 http = "0.2"
