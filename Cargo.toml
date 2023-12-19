@@ -31,6 +31,7 @@ tower = {version = "0.4.7", features = ["balance", "buffer", "discover", "limit"
 #tracing = "0.1"
 #tokio-stream = "0.1"
 futures-util = "0.3.29"
+rand = "0.8.5"
 #
 [build-dependencies]
 tonic-build = "0.10"

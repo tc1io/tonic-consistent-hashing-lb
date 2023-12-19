@@ -1,52 +1,76 @@
 use crate::pb::{HelloReply, HelloRequest};
 use crate::pb::greeter_client::GreeterClient;
 use crate::server::start_server;
-use tonic::transport::Endpoint;
+use tonic::transport::{Channel, Endpoint};
 use std::collections::BTreeMap;
 use std::fmt::Debug;
 use fasthash::murmur3;
+use futures_util::TryFutureExt;
 use prost::Message;
 use tonic::IntoRequest;
+use rand::distributions::Uniform;
+use rand::{thread_rng, Rng};
 
+const VIRTUAL_NODE_SIZE: usize = 3;
 pub mod pb {
     tonic::include_proto!("helloworld");
 }
 
 #[derive(Debug)]
 struct StaticSetConsitentHashingLBClient<T> {
-    clients: BTreeMap<Vec<u8>, Vec<GreeterClient<T>>>,
+    clients: BTreeMap<u32, Vec<GreeterClient<T>>>,
 }
 
 
-fn create_hash(val: &[u8]) -> Vec<u8> {
-    murmur3::hash32(val).encode_to_vec()
+fn create_hash(val: &[u8]) -> u32 {
+    murmur3::hash32(val)
 }
 
-impl StaticSetConsitentHashingLBClient<tonic::transport::Channel> {
-    pub async fn from_static(uris: &'static [&'static str]) -> Self {
+impl StaticSetConsitentHashingLBClient<Channel> {
+    pub async fn new(uris: &'static [&'static str], virtual_node_size: usize) -> Self {
         let mut s = Self { clients: BTreeMap::new() };
-        for (i, u) in uris.chunks(2).enumerate() {
-            let key = format!("key_{:?}", i); // TODO: Generate key from onetime insert or hardcode 'obj' values
-            let k = create_hash(key.as_bytes());
-            let mut c = Vec::new();
-            for x in u {
-                let e = Endpoint::from_static(x);
-                let client = GreeterClient::connect(e).await.unwrap();
-                c.push(client);
+
+        let mut rng = thread_rng();
+        let side = Uniform::new(1, 99999);
+        for node_id in 0..virtual_node_size {
+            for (i, u) in uris.chunks(2).enumerate() {
+
+                let rand = rng.sample(side);
+                let k = format!("{}_{}_{}", rand, i, node_id); // TODO:check if required to format and generate key, can generate with plain rand number
+
+                let key = create_hash(k.as_bytes());
+                dbg!("key {:?}", &key);
+
+                let mut clients = Vec::new();
+                for uri in u {
+                    let endpoint = Endpoint::from_static(uri);
+                    let client = GreeterClient::connect(endpoint).await.unwrap();
+                    clients.push(client);
+                }
+                s.clients.insert(key, clients);
             }
-            s.clients.insert(k, c);
         }
-        println!("clients {:?}", s.clients);
+        println!("clients {:?}", s.clients.len());
         s
     }
 
-    // pub async fn from_nodes(service_name: &'static str) -> Self {
-    //     Self //TODO: Get k8s pods based on node details
-    // }
-    //
-    // pub async fn remove(key: &'static str) -> Self {
-    //     Self //TODO: Remove the node from ring
-    // }
+    pub async fn get_next_channel(&self, k: &str) -> Option<&Vec<GreeterClient<Channel>>> {
+        let key = k.as_bytes();
+        if self.clients.is_empty() {
+            return None;
+        }
+
+        let hashed_key = create_hash(key);
+        let entry = self.clients.range(hashed_key..).next();
+        if let Some((k, v)) = entry {
+            println!("Inside {:?}", k);
+            return Some(v);
+        }
+        let first = self.clients.iter().next();
+        let (k, v) = first.unwrap();
+        println!("Outside {:?}", k);
+        Some(v)
+    }
 
     pub async fn
     call(
@@ -59,7 +83,8 @@ impl StaticSetConsitentHashingLBClient<tonic::transport::Channel> {
         let hash =  create_hash("key_2".as_bytes()); //TODO calculate hash from Request
         println!("hash {:?}", hash);
         //let idx = hash as usize % self.clients.len();
-        let c: &Vec<GreeterClient<_>> = self.clients.get(&hash).unwrap();
+        //let c: &Vec<GreeterClient<_>> = self.clients.get(&hash).unwrap();
+        let c: &Vec<GreeterClient<_>> = self.get_next_channel("ashwin").await.unwrap();
         c[0].clone().say_hello(request).await //TODO: Figure out a way to get the first available server & hit
     }
 }
@@ -69,7 +94,11 @@ impl StaticSetConsitentHashingLBClient<tonic::transport::Channel> {
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     start_server();
 
-    let mut balancing_client = StaticSetConsitentHashingLBClient::from_static(&["http://[::1]:8080","http://[::1]:8081","http://[::1]:8082","http://[::1]:8083","http://[::1]:8084","http://[::1]:8085"]).await;
+    let mut balancing_client = StaticSetConsitentHashingLBClient::new(&["http://[::1]:8080","http://[::1]:8081","http://[::1]:8082","http://[::1]:8083","http://[::1]:8084","http://[::1]:8085"], VIRTUAL_NODE_SIZE).await;
+
+    // let a = balancing_client.get_next_channel("ashwin").await.unwrap();
+    //
+    // println!("next key {:?}", a);
 
     let request = tonic::Request::new(HelloRequest {
         name:"Tonic".to_string(),
