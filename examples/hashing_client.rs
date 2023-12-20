@@ -76,12 +76,11 @@ impl StaticSetConsitentHashingLBClient<Channel> {
         &mut self,
         request:  Request<HelloRequest>
     ) -> Result<tonic::Response<HelloReply>, tonic::Status> {
-        // let req = request.into_inner().clone();
-        // let key = req.key.as_str();
+        let req = request.get_ref();
+        let key = &req.key;
 
-        let key = "profile";
         let c: &Vec<GreeterClient<_>> = self.find_next_client(key).await.unwrap();
-        // let channel = Channel::balance_list(c.into_iter());
+        // let channel = Channel::balance_list(c);
         // channel.say_hello(request).await //TODO: Figure out a way to get the first available server & hit
         c[0].clone().say_hello(request).await
     }
