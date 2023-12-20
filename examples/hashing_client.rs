@@ -51,7 +51,7 @@ impl StaticSetConsitentHashingLBClient<Channel> {
         s
     }
 
-    pub async fn get_next_channel(&self, k: &str) -> Option<&Vec<GreeterClient<Channel>>> {
+    pub async fn find_next_client(&self, k: &str) -> Option<&Vec<GreeterClient<Channel>>> {
         let key = k.as_bytes();
         if self.clients.is_empty() {
             return None;
@@ -80,7 +80,7 @@ impl StaticSetConsitentHashingLBClient<Channel> {
         // let key = req.key.as_str();
 
         let key = "profile";
-        let c: &Vec<GreeterClient<_>> = self.get_next_channel(key).await.unwrap();
+        let c: &Vec<GreeterClient<_>> = self.find_next_client(key).await.unwrap();
         // let channel = Channel::balance_list(c.into_iter());
         // channel.say_hello(request).await //TODO: Figure out a way to get the first available server & hit
         c[0].clone().say_hello(request).await
