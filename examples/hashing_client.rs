@@ -1,11 +1,10 @@
-use crate::pb::{HelloReply, HelloRequest};
+use crate::pb::HelloRequest;
 use crate::pb::greeter_client::GreeterClient;
 use crate::server::start_server;
 use tonic::transport::{Channel, Endpoint};
 use std::collections::BTreeMap;
 use std::fmt::Debug;
 use fasthash::murmur3;
-use tonic::Request;
 use rand::distributions::Uniform;
 use rand::{thread_rng, Rng};
 
@@ -16,7 +15,7 @@ pub mod pb {
 
 #[derive(Debug)]
 struct StaticSetConsitentHashingLBClient<T> {
-    clients: BTreeMap<u32, Vec<GreeterClient<T>>>,
+    clients: BTreeMap<u32, Vec<T>>,
 }
 
 
@@ -24,7 +23,7 @@ fn create_hash(val: &[u8]) -> u32 {
     murmur3::hash32(val)
 }
 
-impl StaticSetConsitentHashingLBClient<Channel> {
+impl StaticSetConsitentHashingLBClient<GreeterClient<Channel>> {
     pub async fn new(uris: &'static [&'static str], virtual_node_size: usize) -> Self {
         let mut s = Self { clients: BTreeMap::new() };
 
@@ -72,17 +71,16 @@ impl StaticSetConsitentHashingLBClient<Channel> {
     }
 
     pub async fn
-    call(
+    balance(
         &mut self,
-        request:  Request<HelloRequest>
-    ) -> Result<tonic::Response<HelloReply>, tonic::Status> {
-        let req = request.get_ref();
-        let key = &req.key;
+        request: &HelloRequest
+    ) -> anyhow::Result<GreeterClient<Channel>> {
+        let key = &request.key;
 
         let c: &Vec<GreeterClient<_>> = self.find_next_client(key).await.unwrap();
         // let channel = Channel::balance_list(c);
         // channel.say_hello(request).await //TODO: Figure out a way to get the first available server & hit
-        c[0].clone().say_hello(request).await
+        Ok(c[0].clone())
     }
 }
 
@@ -99,7 +97,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     });
 
     println!("Saying Hello");
-    let response = balancing_client.call(request).await?;
+    let client = balancing_client.balance(request.get_ref()).await?;
+
+    let response = client.clone().say_hello(request).await;
+
     println!("RESPONSE={:?}", response);
 
     Ok(())
