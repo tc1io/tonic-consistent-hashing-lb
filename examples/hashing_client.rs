@@ -7,6 +7,7 @@ use std::fmt::Debug;
 use fasthash::murmur3;
 use rand::distributions::Uniform;
 use rand::{thread_rng, Rng};
+use crate::pb::greeter_server::Greeter;
 
 const VIRTUAL_NODE_SIZE: usize = 3;
 pub mod pb {
@@ -26,11 +27,11 @@ fn create_hash(val: &[u8]) -> u32 {
 
 impl StaticSetConsitentHashingLBClient<GreeterClient<Channel>> {
 
-    pub fn new() -> StaticSetConsitentHashingLBClient<GreeterClient<Channel>> {
+    pub fn new() -> Self {
           StaticSetConsitentHashingLBClient::with_hash(create_hash)
     }
 
-    pub fn with_hash(hash_fn: fn(&[u8]) -> u32) -> StaticSetConsitentHashingLBClient<GreeterClient<Channel>> {
+    pub fn with_hash(hash_fn: fn(&[u8]) -> u32) -> Self {
         StaticSetConsitentHashingLBClient {
             hasher: hash_fn,
             clients: BTreeMap::new(),
@@ -101,7 +102,6 @@ impl StaticSetConsitentHashingLBClient<GreeterClient<Channel>> {
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     start_server();
 
-    //let mut balancing_client = StaticSetConsitentHashingLBClient::add(&["http://[::1]:8080","http://[::1]:8081","http://[::1]:8082","http://[::1]:8083","http://[::1]:8084","http://[::1]:8085"], VIRTUAL_NODE_SIZE).await;
     let mut bal_client = StaticSetConsitentHashingLBClient::new();
     bal_client.add(&["http://[::1]:8080", "http://[::1]:8081", "http://[::1]:8082", "http://[::1]:8083", "http://[::1]:8084", "http://[::1]:8085"], VIRTUAL_NODE_SIZE).await;
 
@@ -110,7 +110,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         key: "profile".to_string()
     });
 
-    println!("Saying Hello");
     let client = bal_client.balance(request.get_ref()).await?;
 
     let response = client.clone().say_hello(request).await;
