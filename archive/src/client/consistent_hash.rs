@@ -5,12 +5,12 @@ use crate::node::Node;
 use crate::k8s;
 use anyhow::{Result};
 
-fn create_hash(val: &[u8]) -> Vec<u8> {
-    murmur3::hash32(val).encode_to_vec()
-}
-
 pub struct ConsistentHash {
     ring: BTreeMap<Vec<u8>, Node>,
+}
+
+fn create_hash(val: &[u8]) -> Vec<u8> {
+    murmur3::hash32(val).encode_to_vec()
 }
 
 impl ConsistentHash {
@@ -23,7 +23,7 @@ impl ConsistentHash {
         self.remove(node);
         let node_id = format!("{}:{}", node.host, node.port);
         let key = create_hash(node_id.as_bytes());
-        self.ring.insert(key, node.clone());
+    self.ring.insert(key, node.clone());
     }
 
     // pub fn list_ring(&self) {

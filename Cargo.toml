@@ -18,8 +18,8 @@ tonic = "0.10"
 prost = "0.12"
 tokio = { version = "1.0", features = ["macros", "rt-multi-thread"] }
 hostname = "0.3.1"
-#fasthash = "0.4.0"
-#anyhow = "1.0.75"
+fasthash = "0.4.0"
+anyhow = "1.0.75"
 #kube = { version = "0.86.0", features = ["runtime", "derive"] }
 #k8s-openapi = { version = "0.20.0", features = ["latest"] }
 #bytes = "1.0"
@@ -31,6 +31,7 @@ tower = {version = "0.4.7", features = ["balance", "buffer", "discover", "limit"
 #tracing = "0.1"
 #tokio-stream = "0.1"
 futures-util = "0.3.29"
+rand = "0.8.5"
 #
 [build-dependencies]
 tonic-build = "0.10"

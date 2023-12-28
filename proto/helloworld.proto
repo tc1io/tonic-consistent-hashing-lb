@@ -8,6 +8,7 @@ service Greeter {
 
 message HelloRequest {
   string name = 1;
+  string key = 2;
 }
 
 message HelloReply {

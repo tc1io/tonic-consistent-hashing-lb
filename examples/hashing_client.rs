@@ -1,35 +1,99 @@
-use crate::pb::{HelloReply, HelloRequest};
+use crate::pb::HelloRequest;
 use crate::pb::greeter_client::GreeterClient;
 use crate::server::start_server;
-use tonic::transport::Endpoint;
+use tonic::transport::{Channel, Endpoint};
+use std::collections::BTreeMap;
+use std::fmt::Debug;
+use fasthash::murmur3;
+use rand::distributions::Uniform;
+use rand::{thread_rng, Rng};
 
+const VIRTUAL_NODE_SIZE: usize = 3;
 pub mod pb {
     tonic::include_proto!("helloworld");
 }
 
-struct StaticSetConsitentHashingLBClient<T> {
-    clients: Vec<GreeterClient<T>>,
+#[derive(Debug)]
+pub struct StaticSetConsitentHashingLBClient<T> {
+    clients: BTreeMap<u32, Vec<T>>,
+    hasher: fn(&[u8]) -> u32,
 }
 
-impl StaticSetConsitentHashingLBClient<tonic::transport::Channel> {
-    pub async fn new(uris: &'static [&'static str]) -> Self {
-        let mut s = Self { clients: Vec::new() };
-        for u in uris {
-            let u = Endpoint::from_static(u);
-            let client = GreeterClient::connect(u).await.unwrap();
-            s.clients.push(client)
-        }
-        s
+trait StaticSetConsitentHashingTrait {}
+
+fn create_hash(val: &[u8]) -> u32 {
+    murmur3::hash32(val)
+}
+
+impl StaticSetConsitentHashingLBClient<GreeterClient<Channel>> {
+
+    pub async fn new() -> Self {
+          StaticSetConsitentHashingLBClient::with_hash(create_hash).await
     }
 
-    pub async fn say_hello(
+    pub async fn with_hash(hash_fn: fn(&[u8]) -> u32) -> Self {
+        StaticSetConsitentHashingLBClient {
+            hasher: hash_fn,
+            clients: BTreeMap::new(),
+        }
+    }
+    pub async fn add(&mut self, uris: &'static [&'static str], virtual_node_size: usize) {
+        //let mut s = Self { clients: BTreeMap::new() };
+
+        let mut rng = thread_rng();
+        let side = Uniform::new(1, 99999);
+        for node_id in 0..virtual_node_size {
+            for (i, u) in uris.chunks(2).enumerate() {
+
+                let rand = rng.sample(side);
+                let k = format!("{}_{}_{}", rand, i, node_id); // TODO:check if required to format and generate key, (its possible to generate with i and node_id without rand as well)
+
+                let key = (self.hasher)(k.as_bytes());
+                //dbg!("key {:?}", &key);
+
+                let mut clients = Vec::new();
+                for uri in u {
+                    let endpoint = Endpoint::from_static(uri);
+                    let client = GreeterClient::connect(endpoint).await.unwrap();
+                    clients.push(client);
+                }
+                self.clients.insert(key, clients);
+            }
+        }
+
+    }
+
+    pub async fn find_next_client(&self, key: &str) -> Option<&Vec<GreeterClient<Channel>>> {
+        let key = key.as_bytes();
+        if self.clients.is_empty() {
+            return None;
+        }
+        dbg!("all keys {:?}", &self.clients.keys());
+        let hashed_key = (self.hasher)(key);
+        println!("hashed key from request {}", hashed_key);
+        let entry = self.clients.range(hashed_key..).next();
+        if let Some((k, v)) = entry {
+            println!("Found next key in ring - {:?}", k);
+            return Some(v);
+        }
+        let first = self.clients.iter().next();
+        let (k, v) = first.unwrap();
+        println!("Found first key in ring - {:?}", k);
+
+        Some(v)
+    }
+
+    pub async fn
+    balance(
         &mut self,
-        request: impl tonic::IntoRequest<HelloRequest>,
-    ) -> Result<tonic::Response<HelloReply>, tonic::Status> {
-        let hash = 0; // calculate hash from HelloRequest
-        let idx = hash as usize % self.clients.len();
-        let c: &GreeterClient<_> = self.clients.get(idx).unwrap();
-        c.clone().say_hello(request).await
+        request: &HelloRequest
+    ) -> anyhow::Result<GreeterClient<Channel>> {
+        let key = &request.key;
+
+        let c: &Vec<GreeterClient<_>> = self.find_next_client(key).await.unwrap();
+        // let channel = Channel::balance_list(c);
+        // channel.say_hello(request).await
+        Ok(c[0].clone()) //TODO: Figure out a way to get the first available server & hit
     }
 }
 
@@ -38,14 +102,18 @@ impl StaticSetConsitentHashingLBClient<tonic::transport::Channel> {
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     start_server();
 
-    let mut balancing_client = StaticSetConsitentHashingLBClient::new(&["http://[::1]:50053"]).await;
+    let mut bal_client = StaticSetConsitentHashingLBClient::new().await;
+    bal_client.add(&["http://[::1]:8080", "http://[::1]:8081", "http://[::1]:8082", "http://[::1]:8083", "http://[::1]:8084", "http://[::1]:8085"], VIRTUAL_NODE_SIZE).await;
 
     let request = tonic::Request::new(HelloRequest {
-        name: "Tonic".into(),
+        name:"Tonic".to_string(),
+        key: "profile".to_string()
     });
 
-    println!("Saying Hello");
-    let response = balancing_client.say_hello(request).await?;
+    let client = bal_client.balance(request.get_ref()).await?;
+
+    let response = client.clone().say_hello(request).await;
+
     println!("RESPONSE={:?}", response);
 
     Ok(())
@@ -72,7 +140,6 @@ mod server {
             request: Request<HelloRequest>,
         ) -> Result<Response<HelloReply>, Status> {
             println!("Got a request from {:?}", request.remote_addr());
-
             let reply = pb::HelloReply {
                 message: format!("Hello {}!", request.into_inner().name),
             };
@@ -82,8 +149,8 @@ mod server {
 
 
     pub(crate) fn start_server() {
-        //let addrs = ["[::1]:50051", "[::1]:50052"];
-        let addrs = ["[::1]:50053"];
+        let addrs = ["[::1]:8080","[::1]:8081","[::1]:8082","[::1]:8083","[::1]:8084","[::1]:8085"];
+        //let addrs = ["[::1]:50053"];
         for addr in &addrs {
             let addr = addr.parse().unwrap();
 
