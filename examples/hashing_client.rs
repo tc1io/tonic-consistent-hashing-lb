@@ -14,8 +14,9 @@ pub mod pb {
 }
 
 #[derive(Debug)]
-struct StaticSetConsitentHashingLBClient<T> {
+pub struct StaticSetConsitentHashingLBClient<T> {
     clients: BTreeMap<u32, Vec<T>>,
+    hasher: fn(&[u8]) -> u32,
 }
 
 
@@ -24,8 +25,19 @@ fn create_hash(val: &[u8]) -> u32 {
 }
 
 impl StaticSetConsitentHashingLBClient<GreeterClient<Channel>> {
-    pub async fn new(uris: &'static [&'static str], virtual_node_size: usize) -> Self {
-        let mut s = Self { clients: BTreeMap::new() };
+
+    pub fn new() -> StaticSetConsitentHashingLBClient<GreeterClient<Channel>> {
+          StaticSetConsitentHashingLBClient::with_hash(create_hash)
+    }
+
+    pub fn with_hash(hash_fn: fn(&[u8]) -> u32) -> StaticSetConsitentHashingLBClient<GreeterClient<Channel>> {
+        StaticSetConsitentHashingLBClient {
+            hasher: hash_fn,
+            clients: BTreeMap::new(),
+        }
+    }
+    pub async fn add(&mut self, uris: &'static [&'static str], virtual_node_size: usize) {
+        //let mut s = Self { clients: BTreeMap::new() };
 
         let mut rng = thread_rng();
         let side = Uniform::new(1, 99999);
@@ -35,7 +47,7 @@ impl StaticSetConsitentHashingLBClient<GreeterClient<Channel>> {
                 let rand = rng.sample(side);
                 let k = format!("{}_{}_{}", rand, i, node_id); // TODO:check if required to format and generate key, (its possible to generate with i and node_id without rand as well)
 
-                let key = create_hash(k.as_bytes());
+                let key = (self.hasher)(k.as_bytes());
                 //dbg!("key {:?}", &key);
 
                 let mut clients = Vec::new();
@@ -44,19 +56,19 @@ impl StaticSetConsitentHashingLBClient<GreeterClient<Channel>> {
                     let client = GreeterClient::connect(endpoint).await.unwrap();
                     clients.push(client);
                 }
-                s.clients.insert(key, clients);
+                self.clients.insert(key, clients);
             }
         }
-        s
+
     }
 
-    pub async fn find_next_client(&self, k: &str) -> Option<&Vec<GreeterClient<Channel>>> {
-        let key = k.as_bytes();
+    pub async fn find_next_client(&self, key: &str) -> Option<&Vec<GreeterClient<Channel>>> {
+        let key = key.as_bytes();
         if self.clients.is_empty() {
             return None;
         }
         dbg!("all keys {:?}", &self.clients.keys());
-        let hashed_key = create_hash(key);
+        let hashed_key = (self.hasher)(key);
         println!("hashed key from request {}", hashed_key);
         let entry = self.clients.range(hashed_key..).next();
         if let Some((k, v)) = entry {
@@ -79,8 +91,8 @@ impl StaticSetConsitentHashingLBClient<GreeterClient<Channel>> {
 
         let c: &Vec<GreeterClient<_>> = self.find_next_client(key).await.unwrap();
         // let channel = Channel::balance_list(c);
-        // channel.say_hello(request).await //TODO: Figure out a way to get the first available server & hit
-        Ok(c[0].clone())
+        // channel.say_hello(request).await
+        Ok(c[0].clone()) //TODO: Figure out a way to get the first available server & hit
     }
 }
 
@@ -89,7 +101,9 @@ impl StaticSetConsitentHashingLBClient<GreeterClient<Channel>> {
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     start_server();
 
-    let mut balancing_client = StaticSetConsitentHashingLBClient::new(&["http://[::1]:8080","http://[::1]:8081","http://[::1]:8082","http://[::1]:8083","http://[::1]:8084","http://[::1]:8085"], VIRTUAL_NODE_SIZE).await;
+    //let mut balancing_client = StaticSetConsitentHashingLBClient::add(&["http://[::1]:8080","http://[::1]:8081","http://[::1]:8082","http://[::1]:8083","http://[::1]:8084","http://[::1]:8085"], VIRTUAL_NODE_SIZE).await;
+    let mut bal_client = StaticSetConsitentHashingLBClient::new();
+    bal_client.add(&["http://[::1]:8080", "http://[::1]:8081", "http://[::1]:8082", "http://[::1]:8083", "http://[::1]:8084", "http://[::1]:8085"], VIRTUAL_NODE_SIZE).await;
 
     let request = tonic::Request::new(HelloRequest {
         name:"Tonic".to_string(),
@@ -97,7 +111,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     });
 
     println!("Saying Hello");
-    let client = balancing_client.balance(request.get_ref()).await?;
+    let client = bal_client.balance(request.get_ref()).await?;
 
     let response = client.clone().say_hello(request).await;
 
