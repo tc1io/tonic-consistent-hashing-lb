@@ -19,7 +19,15 @@ pub struct StaticSetConsitentHashingLBClient<T> {
     hasher: fn(&[u8]) -> u32,
 }
 
-trait StaticSetConsitentHashingTrait {}
+pub trait ConsistentHashingTrait {
+    fn get_key(&self) -> String;
+}
+
+impl ConsistentHashingTrait for HelloRequest {
+    fn get_key(&self) -> String {
+        (&self.key.as_str()).parse().unwrap()
+    }
+}
 
 fn create_hash(val: &[u8]) -> u32 {
     murmur3::hash32(val)
