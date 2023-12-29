@@ -1,7 +1,7 @@
 use crate::pb::HelloRequest;
 use crate::pb::greeter_client::GreeterClient;
 use crate::server::start_server;
-use tonic::transport::{Channel, Endpoint};
+use tonic::transport::Channel;
 use std::collections::BTreeMap;
 use std::fmt::Debug;
 use fasthash::murmur3;
@@ -15,7 +15,7 @@ pub mod pb {
 
 #[derive(Debug)]
 pub struct StaticSetConsitentHashingLBClient<T> {
-    clients: BTreeMap<u32, Vec<T>>,
+    clients: BTreeMap<u32, T>,
     hasher: fn(&[u8]) -> u32,
 }
 
@@ -43,27 +43,22 @@ impl StaticSetConsitentHashingLBClient<GreeterClient<Channel>> {
         let mut rng = thread_rng();
         let side = Uniform::new(1, 99999);
         for node_id in 0..virtual_node_size {
-            for (i, u) in uris.chunks(2).enumerate() {
+            for u in uris.chunks(2) {
 
                 let rand = rng.sample(side);
-                let k = format!("{}_{}_{}", rand, i, node_id); // TODO:check if required to format and generate key, (its possible to generate with i and node_id without rand as well)
+                let k = format!("{}_{}", rand, node_id); // TODO:check if required to format and generate key, (its possible to generate with i and node_id without rand as well)
 
                 let key = (self.hasher)(k.as_bytes());
-                //dbg!("key {:?}", &key);
 
-                let mut clients = Vec::new();
-                for uri in u {
-                    let endpoint = Endpoint::from_static(uri);
-                    let client = GreeterClient::connect(endpoint).await.unwrap();
-                    clients.push(client);
-                }
-                self.clients.insert(key, clients);
+                let endpoint = u.iter().map(|e| Channel::from_static(e));
+                let channel = Channel::balance_list(endpoint);
+                let client = GreeterClient::new(channel);
+                self.clients.insert(key, client);
             }
         }
-
     }
 
-    pub async fn find_next_client(&self, key: &str) -> Option<&Vec<GreeterClient<Channel>>> {
+    pub async fn find_next_client(&self, key: &str) -> Option<&GreeterClient<Channel>> {
         let key = key.as_bytes();
         if self.clients.is_empty() {
             return None;
@@ -84,16 +79,14 @@ impl StaticSetConsitentHashingLBClient<GreeterClient<Channel>> {
     }
 
     pub async fn
-    balance(
+    find(
         &mut self,
         request: &HelloRequest
     ) -> anyhow::Result<GreeterClient<Channel>> {
         let key = &request.key;
 
-        let c: &Vec<GreeterClient<_>> = self.find_next_client(key).await.unwrap();
-        // let channel = Channel::balance_list(c);
-        // channel.say_hello(request).await
-        Ok(c[0].clone()) //TODO: Figure out a way to get the first available server & hit
+        let c: &GreeterClient<_> = self.find_next_client(key).await.unwrap();
+        Ok(c.clone())
     }
 }
 
@@ -110,7 +103,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         key: "profile".to_string()
     });
 
-    let client = bal_client.balance(request.get_ref()).await?;
+    let client = bal_client.find(request.get_ref()).await?;
 
     let response = client.clone().say_hello(request).await;
 
