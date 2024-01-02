@@ -87,13 +87,16 @@ impl StaticSetConsitentHashingLBClient<GreeterClient<Channel>> {
     }
 
     pub async fn
-    find(
+    find<R>(
         &mut self,
-        request: &HelloRequest
-    ) -> anyhow::Result<GreeterClient<Channel>> {
-        let key = &request.key;
+        request: &R
+    ) -> anyhow::Result<GreeterClient<Channel>>
+    where
+    R: ConsistentHashingTrait
+    {
+        let key = request.get_key();
 
-        let c: &GreeterClient<_> = self.find_next_client(key).await.unwrap();
+        let c: &GreeterClient<_> = self.find_next_client(key.as_str()).await.unwrap();
         Ok(c.clone())
     }
 }
