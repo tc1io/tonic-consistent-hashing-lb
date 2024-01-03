@@ -23,17 +23,15 @@ pub trait ConsistentHashingTrait {
     fn get_key(&self) -> String;
 }
 
-impl ConsistentHashingTrait for HelloRequest {
-    fn get_key(&self) -> String {
-        (&self.key.as_str()).parse().unwrap()
-    }
+pub trait NewFromChannel {
+    fn new(channel: Channel) -> Self;
 }
 
 fn create_hash(val: &[u8]) -> u32 {
     murmur3::hash32(val)
 }
 
-impl StaticSetConsitentHashingLBClient<GreeterClient<Channel>> {
+impl<T: NewFromChannel> StaticSetConsitentHashingLBClient<T> {
 
     pub async fn new() -> Self {
           StaticSetConsitentHashingLBClient::with_hash(create_hash).await
@@ -60,13 +58,13 @@ impl StaticSetConsitentHashingLBClient<GreeterClient<Channel>> {
 
                 let endpoint = u.iter().map(|e| Channel::from_static(e));
                 let channel = Channel::balance_list(endpoint);
-                let client = GreeterClient::new(channel);
+                let client = T::new(channel);
                 self.clients.insert(key, client);
             }
         }
     }
 
-    pub async fn find_next_client(&self, key: &str) -> Option<&GreeterClient<Channel>> {
+    pub async fn find_next_client(&self, key: &str) -> Option<&T> {
         let key = key.as_bytes();
         if self.clients.is_empty() {
             return None;
@@ -90,18 +88,28 @@ impl StaticSetConsitentHashingLBClient<GreeterClient<Channel>> {
     find<R>(
         &mut self,
         request: &R
-    ) -> anyhow::Result<GreeterClient<Channel>>
+    ) -> anyhow::Result<&T>
     where
     R: ConsistentHashingTrait
     {
         let key = request.get_key();
 
-        let c: &GreeterClient<_> = self.find_next_client(key.as_str()).await.unwrap();
-        Ok(c.clone())
+        let c: &T = self.find_next_client(key.as_str()).await.unwrap();
+        Ok(c)
     }
 }
 
+impl ConsistentHashingTrait for HelloRequest {
+    fn get_key(&self) -> String {
+        (&self.key.as_str()).parse().unwrap()
+    }
+}
 
+impl NewFromChannel for GreeterClient<Channel> {
+    fn new(channel: Channel) -> Self {
+        GreeterClient::new(channel)
+    }
+}
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     start_server();
@@ -114,7 +122,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         key: "profile".to_string()
     });
 
-    let client = bal_client.find(request.get_ref()).await?;
+    let client:&GreeterClient<Channel> = bal_client.find(request.get_ref()).await?;
 
     let response = client.clone().say_hello(request).await;
 
