@@ -37,7 +37,7 @@ fn create_hash(val: &[u8]) -> u32 {
 }
 
 // ASHWIN
-trait NewFromChannel {
+pub  trait NewFromChannel {
     fn new(channel: Channel) -> Self;
 }
 
@@ -97,14 +97,14 @@ impl<T: NewFromChannel> StaticSetConsitentHashingLBClient<T> {
     find<R>(
         &mut self,
         request: &R,
-    ) -> anyhow::Result<T> // ASHWIN
+    ) -> anyhow::Result<&T> // ASHWIN
         where
             R: ConsistentHashingTrait
     {
         let key = request.get_key();
 
         let c: &T = self.find_next_client(key.as_str()).await.unwrap();
-        Ok(c.clone())
+        Ok(c)
     }
 }
 
@@ -127,7 +127,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         key: "profile".to_string(),
     });
 
-    let client = bal_client.find(request.get_ref()).await?;
+    let client: &GreeterClient<Channel> = bal_client.find(request.get_ref()).await?;
 
     let response = client.clone().say_hello(request).await;
 
